@@ -1,0 +1,280 @@
+{
+  "entities": {
+    "Employee": {
+      "title": "Employee",
+      "description": "Represents a staff member inside the company",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "email": { "type": "string" },
+        "role": { "type": "string" },
+        "salary": { "type": "number" },
+        "department": { "type": "string" },
+        "phone": { "type": "string" },
+        "joiningDate": { "type": "string" },
+        "status": { "type": "string", "enum": ["Active", "On Leave", "Terminated"] },
+        "employmentType": { "type": "string", "enum": ["Full-Time", "Part-Time", "Contract", "Intern"] },
+        "emergencyContact": { "type": "string" },
+        "notes": { "type": "string" }
+      },
+      "required": ["id", "name", "email", "role", "salary", "department"]
+    },
+    "AttendanceRecord": {
+      "title": "AttendanceRecord",
+      "description": "Daily attendance record of an employee",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "employeeId": { "type": "string" },
+        "date": { "type": "string" },
+        "status": { "type": "string", "enum": ["Present", "Absent", "Leave", "Half-Day"] }
+      },
+      "required": ["id", "employeeId", "date", "status"]
+    },
+    "Task": {
+      "title": "Task",
+      "description": "A work task assigned to an employee",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "description": { "type": "string" },
+        "status": { "type": "string", "enum": ["To Do", "In Progress", "Completed"] },
+        "assignedEmployeeId": { "type": "string" },
+        "priority": { "type": "string", "enum": ["Low", "Medium", "High"] },
+        "dueDate": { "type": "string" }
+      },
+      "required": ["id", "title", "description", "status", "assignedEmployeeId", "priority", "dueDate"]
+    },
+    "Candidate": {
+      "title": "Candidate",
+      "description": "Job applicant",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "email": { "type": "string" },
+        "skills": { "type": "string" },
+        "experience": { "type": "string" },
+        "status": { "type": "string", "enum": ["New", "Interview", "Selected", "Rejected"] }
+      },
+      "required": ["id", "name", "skills", "experience", "status"]
+    },
+    "Interview": {
+      "title": "Interview",
+      "description": "Candidate interview details",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "candidateId": { "type": "string" },
+        "candidateName": { "type": "string" },
+        "date": { "type": "string" },
+        "time": { "type": "string" },
+        "interviewer": { "type": "string" },
+        "status": { "type": "string", "enum": ["Scheduled", "Completed", "Cancelled"] },
+        "feedback": { "type": "string" },
+        "result": { "type": "string", "enum": ["Passed", "Failed", "Pending"] }
+      },
+      "required": ["id", "candidateId", "candidateName", "date", "time", "interviewer", "status", "feedback", "result"]
+    },
+    "Client": {
+      "title": "Client",
+      "description": "A customer client organization",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "companyName": { "type": "string" },
+        "contactPerson": { "type": "string" },
+        "email": { "type": "string" },
+        "requirements": { "type": "string" }
+      },
+      "required": ["id", "companyName", "contactPerson", "email", "requirements"]
+    },
+    "ActivityLog": {
+      "title": "ActivityLog",
+      "description": "Log of system operations",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "type": { "type": "string", "enum": ["employee", "candidate", "interview", "task", "client", "payroll", "attendance"] },
+        "action": { "type": "string" },
+        "details": { "type": "string" },
+        "timestamp": { "type": "string" }
+      },
+      "required": ["id", "type", "action", "details", "timestamp"]
+    },
+    "Invoice": {
+      "title": "Invoice",
+      "description": "Customer invoice details",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "clientId": { "type": "string" },
+        "clientName": { "type": "string" },
+        "invoiceNumber": { "type": "string" },
+        "issueDate": { "type": "string" },
+        "dueDate": { "type": "string" },
+        "subtotal": { "type": "number" },
+        "taxRate": { "type": "number" },
+        "taxAmount": { "type": "number" },
+        "discount": { "type": "number" },
+        "grandTotal": { "type": "number" },
+        "status": { "type": "string", "enum": ["Paid", "Unpaid", "Overdue", "Draft"] }
+      },
+      "required": ["id", "clientId", "clientName", "invoiceNumber", "issueDate", "dueDate", "subtotal", "taxRate", "taxAmount", "discount", "grandTotal", "status"]
+    },
+    "AssistsIssue": {
+      "title": "AssistsIssue",
+      "description": "Support query or IT/HR ticket raised by employee",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "category": { "type": "string", "enum": ["IT Support", "HR Query", "Assets & Equipment", "Facilities", "Finance"] },
+        "severity": { "type": "string", "enum": ["Low", "Medium", "High"] },
+        "description": { "type": "string" },
+        "employeeId": { "type": "string" },
+        "employeeName": { "type": "string" },
+        "status": { "type": "string", "enum": ["Pending", "In Progress", "Resolved"] },
+        "dateCreated": { "type": "string" },
+        "adminNotes": { "type": "string" },
+        "assignedToId": { "type": "string" },
+        "assignedToName": { "type": "string" }
+      },
+      "required": ["id", "title", "category", "severity", "description", "employeeId", "employeeName", "status", "dateCreated"]
+    },
+    "EquipmentAssignment": {
+      "title": "EquipmentAssignment",
+      "description": "IT hardware assets assigned to employees",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "employeeId": { "type": "string" },
+        "employeeName": { "type": "string" },
+        "itemName": { "type": "string" },
+        "serialNumber": { "type": "string" },
+        "type": { "type": "string", "enum": ["Laptop", "Monitor", "Keyboard/Mouse", "Headset", "Mobile Device", "Ergonomic Desk/Chair", "Charger/Power Adapter", "Accessory", "Other"] },
+        "status": { "type": "string", "enum": ["Assigned", "Returned", "Under Repair", "Pending Setup"] },
+        "assignedDate": { "type": "string" },
+        "returnDate": { "type": "string" },
+        "condition": { "type": "string", "enum": ["New", "Excellent", "Good", "Fair", "Damaged"] },
+        "notes": { "type": "string" }
+      },
+      "required": ["id", "employeeId", "employeeName", "itemName", "serialNumber", "type", "status", "assignedDate", "condition"]
+    },
+    "LeaveRequest": {
+      "title": "LeaveRequest",
+      "description": "Employee leave request applications",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "employeeId": { "type": "string" },
+        "employeeName": { "type": "string" },
+        "startDate": { "type": "string" },
+        "endDate": { "type": "string" },
+        "reason": { "type": "string" },
+        "type": { "type": "string", "enum": ["Annual", "Sick", "Maternity/Paternity", "Casual", "Unpaid", "Other"] },
+        "status": { "type": "string", "enum": ["Pending", "Approved", "Rejected"] },
+        "dateApplied": { "type": "string" },
+        "adminNotes": { "type": "string" }
+      },
+      "required": ["id", "employeeId", "employeeName", "startDate", "endDate", "reason", "type", "status", "dateApplied"]
+    },
+    "SalarySlip": {
+      "title": "SalarySlip",
+      "description": "Monthly payroll salary slip details",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "employeeId": { "type": "string" },
+        "employeeName": { "type": "string" },
+        "month": { "type": "string" },
+        "year": { "type": "string" },
+        "baseSalary": { "type": "number" },
+        "hra": { "type": "number" },
+        "da": { "type": "number" },
+        "conveyance": { "type": "number" },
+        "medical": { "type": "number" },
+        "specialAllowance": { "type": "number" },
+        "pf": { "type": "number" },
+        "lopDays": { "type": "number" },
+        "lopDeduction": { "type": "number" },
+        "taxDeduction": { "type": "number" },
+        "totalEarnings": { "type": "number" },
+        "totalDeductions": { "type": "number" },
+        "netPay": { "type": "number" },
+        "approvedDate": { "type": "string" },
+        "companyName": { "type": "string" },
+        "payDateDay": { "type": "string" },
+        "status": { "type": "string", "enum": ["Approved", "Paid"] }
+      },
+      "required": ["id", "employeeId", "employeeName", "month", "year", "baseSalary", "hra", "da", "conveyance", "medical", "specialAllowance", "pf", "lopDays", "lopDeduction", "taxDeduction", "totalEarnings", "totalDeductions", "netPay", "approvedDate", "companyName", "payDateDay", "status"]
+    },
+    "RegisteredAdmin": {
+      "title": "RegisteredAdmin",
+      "description": "Tenant administrator credentials and name",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "email": { "type": "string" },
+        "password": { "type": "string" }
+      },
+      "required": ["name", "email", "password"]
+    }
+  },
+  "firestore": {
+    "crm_employees": {
+      "schema": { "$ref": "#/entities/Employee" },
+      "description": "List of company employees"
+    },
+    "crm_candidates": {
+      "schema": { "$ref": "#/entities/Candidate" },
+      "description": "Job applicants in recruiting funnel"
+    },
+    "crm_tasks": {
+      "schema": { "$ref": "#/entities/Task" },
+      "description": "Tasks assigned to staff members"
+    },
+    "crm_interviews": {
+      "schema": { "$ref": "#/entities/Interview" },
+      "description": "Scheduled candidate interviews"
+    },
+    "crm_clients": {
+      "schema": { "$ref": "#/entities/Client" },
+      "description": "Clients of the organization"
+    },
+    "crm_attendance": {
+      "schema": { "$ref": "#/entities/AttendanceRecord" },
+      "description": "Staff attendance database"
+    },
+    "crm_activities": {
+      "schema": { "$ref": "#/entities/ActivityLog" },
+      "description": "Audit trails and activity logs"
+    },
+    "crm_invoices": {
+      "schema": { "$ref": "#/entities/Invoice" },
+      "description": "Billed financial invoices"
+    },
+    "crm_issues": {
+      "schema": { "$ref": "#/entities/AssistsIssue" },
+      "description": "Internal tickets and IT queries"
+    },
+    "crm_equipment": {
+      "schema": { "$ref": "#/entities/EquipmentAssignment" },
+      "description": "Hardware assignments and assets tracking"
+    },
+    "crm_leaves": {
+      "schema": { "$ref": "#/entities/LeaveRequest" },
+      "description": "Time-off and leave applications"
+    },
+    "crm_salary_slips": {
+      "schema": { "$ref": "#/entities/SalarySlip" },
+      "description": "Monthly payroll salary slips generated"
+    },
+    "crm_registered_admins": {
+      "schema": { "$ref": "#/entities/RegisteredAdmin" },
+      "description": "Admins registered in this CRM portal"
+    }
+  }
+}

@@ -1,0 +1,196 @@
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+}
+
+html {
+  transition: font-size 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Global Frosted Glass Page Background */
+html, body {
+  background-color: #0f172a !important;
+  background-image: radial-gradient(circle at 50% 50%, rgba(56, 189, 248, 0.15) 0%, transparent 50%),
+                    radial-gradient(circle at 10% 20%, rgba(139, 92, 246, 0.18) 0%, transparent 40%) !important;
+  background-attachment: fixed !important;
+  background-size: cover !important;
+  color: #f1f5f9;
+}
+
+/* Make workspace layout element backdrops translucent to show the glowing background gradients */
+#app-workspace-body {
+  background-color: transparent !important;
+  background-image: none !important;
+}
+
+#login-gateway {
+  background-color: #0f172a !important;
+  background-image: radial-gradient(circle at 50% 50%, rgba(56, 189, 248, 0.18) 0%, transparent 50%),
+                    radial-gradient(circle at 10% 20%, rgba(139, 92, 246, 0.2) 0%, transparent 40%) !important;
+}
+
+/* Frosted Glass Panels Overrides */
+.bg-slate-900\/40,
+.bg-slate-900\/30,
+.bg-slate-900\/20,
+.bg-slate-800\/40,
+.bg-slate-800\/30,
+.bg-slate-850 {
+  background-color: rgba(255, 255, 255, 0.04) !important;
+  backdrop-filter: blur(16px) !important;
+  -webkit-backdrop-filter: blur(16px) !important;
+}
+
+/* Slightly more opaque for hover/dropdown states or dark cards */
+.bg-slate-900,
+.bg-slate-950/45 {
+  background-color: rgba(15, 23, 42, 0.6) !important;
+  backdrop-filter: blur(20px) !important;
+  -webkit-backdrop-filter: blur(20px) !important;
+}
+
+/* Glass Borders Overrides */
+.border-slate-800\/80,
+.border-slate-800\/40,
+.border-slate-800\/60,
+.border-slate-700\/50,
+.border-slate-700\/40,
+.border-slate-700\/30,
+.border-slate-800,
+.border-slate-700,
+.border-slate-600\/30 {
+  border-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+/* Custom Interactive Accents for Nexus CRM Branding (Teal/Emerald -> Sky/Indigo) */
+.text-teal-400 {
+  color: #38bdf8 !important; /* Sky-400 */
+}
+.text-teal-300 {
+  color: #7dd3fc !important; /* Sky-300 */
+}
+.text-emerald-400 {
+  color: #818cf8 !important; /* Indigo-400 */
+}
+.text-emerald-300 {
+  color: #a5b4fc !important; /* Indigo-300 */
+}
+.bg-teal-500\/10 {
+  background-color: rgba(56, 189, 248, 0.12) !important;
+  color: #38bdf8 !important;
+}
+.bg-emerald-500\/10 {
+  background-color: rgba(129, 140, 248, 0.12) !important;
+  color: #818cf8 !important;
+}
+.bg-emerald-500\/5 {
+  background-color: rgba(129, 140, 248, 0.06) !important;
+}
+.border-emerald-500\/10, .border-emerald-500\/20 {
+  border-color: rgba(129, 140, 248, 0.2) !important;
+}
+.border-teal-500\/20 {
+  border-color: rgba(56, 189, 248, 0.2) !important;
+}
+
+/* Active sidebar item gradient override */
+.bg-gradient-to-r.from-teal-500\/20.to-emerald-500\/10 {
+  background-image: linear-gradient(to right, rgba(56, 189, 248, 0.15), rgba(129, 140, 248, 0.08)) !important;
+  border-left-color: #38bdf8 !important;
+  color: #38bdf8 !important;
+}
+
+.text-teal-400 {
+  color: #38bdf8 !important;
+}
+
+.bg-teal-400 {
+  background-color: #38bdf8 !important;
+}
+
+/* Custom Animation Keyframes */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideIn {
+  from {
+    transform: translateY(12px) scale(0.97);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0) scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes toastProgress {
+  from {
+    width: 100%;
+  }
+  to {
+    width: 0%;
+  }
+}
+
+/* Utility Animations */
+.animate-fade-in {
+  animation: fadeIn 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.animate-slide-in {
+  animation: slideIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.animate-toast-progress {
+  animation: toastProgress linear forwards;
+}
+
+/* Glassmorphism Scrollbars */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: rgba(30, 41, 59, 0.1);
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.2);
+  border-radius: 9999px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgba(56, 189, 248, 0.4);
+}
+
+/* Print Overwrite Styles for PDF Payslip */
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  #payslip-print-canvas, #payslip-print-canvas * {
+    visibility: visible;
+  }
+  #payslip-print-canvas {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    background: #0f172a !important;
+    color: #e2e8f0 !important;
+    border: none !important;
+    padding: 0 !important;
+  }
+}

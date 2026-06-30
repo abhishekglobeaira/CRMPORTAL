@@ -1,0 +1,8 @@
+{
+  "name": "Remix: CRM \u0026 HRMS Portal",
+  "description": "A comprehensive CRM \u0026 HRMS workspace with Employee tracking, Attendance, Payroll, Candidates, Clients, Kanban boards, and Scheduled interviews.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
