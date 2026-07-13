@@ -17,7 +17,8 @@ import {
   Building,
   Receipt,
   LifeBuoy,
-  Calendar
+  Calendar,
+  ShieldAlert
 } from 'lucide-react';
 import { ActiveView } from '../types';
 
@@ -41,6 +42,7 @@ export default function Sidebar({ activeView, setActiveView, onLogout, userEmail
     { id: 'invoices' as ActiveView, label: 'Invoices', icon: Receipt },
     { id: 'issues' as ActiveView, label: 'Helpdesk Tickets', icon: LifeBuoy },
     { id: 'leaves' as ActiveView, label: 'Leave Requests', icon: Calendar },
+    { id: 'admin-manage' as ActiveView, label: 'Access Control', icon: ShieldAlert },
   ];
 
   return (

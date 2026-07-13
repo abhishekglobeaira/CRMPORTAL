@@ -6,6 +6,7 @@
 import React, { useState, useEffect } from 'react';
 import { Clock, Search, Bell, ShieldCheck, Sun, User, Type } from 'lucide-react';
 import { ActiveView } from '../types';
+import { dbGetCollection, dbSaveItem } from '../firebase';
 
 interface NavbarProps {
   activeView: ActiveView;
@@ -14,14 +15,36 @@ interface NavbarProps {
 
 export default function Navbar({ activeView, userEmail }: NavbarProps) {
   const [time, setTime] = useState(new Date());
-  const [fontSize, setFontSize] = useState<string>(() => {
-    return localStorage.getItem('nexus-font-size') || 'md';
-  });
+  const [fontSize, setFontSize] = useState<string>('md');
 
   useEffect(() => {
     const timer = setInterval(() => setTime(new Date()), 1000);
     return () => clearInterval(timer);
   }, []);
+
+  useEffect(() => {
+    const loadSavedFontSize = async () => {
+      if (!userEmail) {
+        setFontSize('md');
+        return;
+      }
+
+      try {
+        const preferences = await dbGetCollection<{ email: string; fontSize: string }>('crm_user_preferences');
+        const savedPreference = preferences.find((pref) => pref.email?.toLowerCase() === userEmail.toLowerCase());
+        if (savedPreference?.fontSize) {
+          setFontSize(savedPreference.fontSize);
+        } else {
+          setFontSize('md');
+        }
+      } catch (error) {
+        console.error('Failed to load UI font preference from database:', error);
+        setFontSize('md');
+      }
+    };
+
+    loadSavedFontSize();
+  }, [userEmail]);
 
   useEffect(() => {
     const root = document.documentElement;
@@ -32,8 +55,22 @@ export default function Navbar({ activeView, userEmail }: NavbarProps) {
       xl: '21px',
     };
     root.style.fontSize = sizeMap[fontSize] || '16px';
-    localStorage.setItem('nexus-font-size', fontSize);
   }, [fontSize]);
+
+  useEffect(() => {
+    if (!userEmail) return;
+
+    const timer = setTimeout(() => {
+      dbSaveItem('crm_user_preferences', userEmail, {
+        email: userEmail,
+        fontSize,
+      }).catch((error) => {
+        console.error('Failed to save UI font preference to database:', error);
+      });
+    }, 100);
+
+    return () => clearTimeout(timer);
+  }, [fontSize, userEmail]);
 
   const formatViewName = (view: ActiveView) => {
     switch (view) {
@@ -47,6 +84,8 @@ export default function Navbar({ activeView, userEmail }: NavbarProps) {
       case 'clients': return 'Client Portfolios';
       case 'invoices': return 'Billing & Invoices';
       case 'issues': return 'Employee Helpdesk Tickets';
+      case 'leaves': return 'Leave Requests';
+      case 'admin-manage': return 'Credentials & Access Control';
       default: return 'Workspace';
     }
   };

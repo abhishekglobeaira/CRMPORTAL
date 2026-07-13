@@ -149,7 +149,8 @@ export type ActiveView =
   | 'clients'
   | 'invoices'
   | 'issues'
-  | 'leaves';
+  | 'leaves'
+  | 'admin-manage';
 
 export interface LeaveRequest {
   id: string;

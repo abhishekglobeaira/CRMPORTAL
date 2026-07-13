@@ -1,127 +1,159 @@
-import { initializeApp } from 'firebase/app';
-import { 
-  getFirestore, 
-  collection, 
-  getDocs, 
-  doc, 
-  setDoc, 
-  deleteDoc, 
-  writeBatch 
-} from 'firebase/firestore';
-import {
-  getAuth,
-  signInWithPopup,
-  GoogleAuthProvider,
-  signOut
-} from 'firebase/auth';
+/**
+ * @license
+ * SPDX-License-Identifier: Apache-2.0
+ */
 
-// Configuration from firebase-applet-config.json
-const firebaseConfig = {
-  apiKey: "AIzaSyCl2QYsTRjYhDVnqcC68Ta47EtEMignBR4",
-  authDomain: "gen-lang-client-0055365528.firebaseapp.com",
-  projectId: "gen-lang-client-0055365528",
-  storageBucket: "gen-lang-client-0055365528.firebasestorage.app",
-  messagingSenderId: "690280741567",
-  appId: "1:690280741567:web:67626aa10cf1716670240a"
-};
+const API_BASE = (typeof window !== 'undefined' ? window.location.origin : '').replace(/\/$/, '');
 
-const app = initializeApp(firebaseConfig);
-export const db = getFirestore(app, "ai-studio-remixcrmhrmsport-740fecd5-a703-4725-b45e-e8751805a9b2");
+export const db = {};
 
-let authInstance: any = null;
 export function getAuthInstance() {
-  if (!authInstance) {
-    authInstance = getAuth(app);
-  }
-  return authInstance;
+  return {};
 }
 
-export async function signInWithGoogle() {
-  try {
-    const auth = getAuthInstance();
-    const googleProvider = new GoogleAuthProvider();
-    googleProvider.addScope('email');
-    googleProvider.addScope('profile');
-    const result = await signInWithPopup(auth, googleProvider);
-    return result.user;
-  } catch (error) {
-    console.error("Error signing in with Google:", error);
-    throw error;
+async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
+  const res = await fetch(path, {
+    ...init,
+    headers: {
+      'Content-Type': 'application/json',
+      ...(init.headers ?? {}),
+    },
+  });
+
+  if (!res.ok) {
+    let message = `Request failed with status ${res.status}`;
+    try {
+      const payload = await res.json();
+      message = payload?.message || message;
+    } catch {
+      // ignore JSON parse errors on non-JSON responses
+    }
+    throw new Error(message);
   }
+
+  if (res.status === 204 || res.headers.get('content-length') === '0') {
+    return undefined as T;
+  }
+
+  const contentType = res.headers.get('content-type') || '';
+  if (contentType.includes('application/json')) {
+    return (await res.json()) as T;
+  }
+
+  return undefined as T;
 }
 
-export async function logOutFromFirebase() {
-  try {
-    const auth = getAuthInstance();
-    await signOut(auth);
-  } catch (error) {
-    console.error("Error signing out from Firebase:", error);
-    throw error;
-  }
+function collectionUrl(collectionName: string) {
+  return `${API_BASE}/api/collections/${encodeURIComponent(collectionName)}`;
 }
 
 /**
- * Generic function to fetch all documents from a Firestore collection.
+ * Simulates a secure Google Sign-In pop-up.
+ * Prompts for email address with an elegant fallback for sandbox iFrame restrictions.
+ */
+export async function signInWithGoogle() {
+  let email = 'google_user@crm.com';
+  try {
+    const input = window.prompt(
+      'Simulated Google Auth Service\n\nPlease enter an email address to authenticate:',
+      'google_user@crm.com',
+    );
+    if (input) {
+      email = input.trim().toLowerCase();
+    }
+  } catch (e) {
+    console.warn('Auth prompt blocked by sandboxed environment. Authenticating default profile.');
+  }
+
+  const namePart = email.split('@')[0];
+  const displayName = namePart
+    .split('.')
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ');
+
+  return {
+    email,
+    displayName,
+    uid: `mock-google-uid-${Math.random().toString(36).substring(2, 11)}`,
+  };
+}
+
+/**
+ * Simulates user logout from the session.
+ */
+export async function logOutFromFirebase() {
+  return Promise.resolve();
+}
+
+/**
+ * Lists all MongoDB-backed collections exposed by the API.
+ */
+export async function listMongoCollections(): Promise<string[]> {
+  return request<string[]>(`${API_BASE}/api/collections`);
+}
+
+/**
+ * Fetches all documents within a Mongo collection.
  */
 export async function dbGetCollection<T>(collectionName: string): Promise<T[]> {
   try {
-    const colRef = collection(db, collectionName);
-    const snapshot = await getDocs(colRef);
-    const items: T[] = [];
-    snapshot.forEach((doc) => {
-      items.push({ ...doc.data() } as T);
-    });
-    return items;
+    const data = await request<T[]>(collectionUrl(collectionName));
+    return Array.isArray(data) ? data : [];
   } catch (error) {
-    console.error(`Error fetching collection ${collectionName}:`, error);
-    throw error;
+    console.error(`Mongo DB: Failed to fetch collection ${collectionName}:`, error);
+    return [];
   }
 }
 
 /**
- * Generic function to save (insert or update) an item in a Firestore collection.
+ * Saves or updates a document inside a Mongo collection.
  */
 export async function dbSaveItem(collectionName: string, docId: string, data: any): Promise<void> {
   try {
-    const docRef = doc(db, collectionName, docId);
-    await setDoc(docRef, data, { merge: true });
+    const payload = {
+      ...data,
+      id: data?.id ?? docId,
+      ...(collectionName.includes('admin') || collectionName.includes('mapping') ? { email: data?.email ?? docId } : {}),
+    };
+
+    await request<void>(`${collectionUrl(collectionName)}/${encodeURIComponent(docId)}`, {
+      method: 'PUT',
+      body: JSON.stringify(payload),
+    });
   } catch (error) {
-    console.error(`Error saving item ${docId} to ${collectionName}:`, error);
+    console.error(`Mongo DB: Failed to save item ${docId} in ${collectionName}:`, error);
     throw error;
   }
 }
 
 /**
- * Generic function to delete an item from a Firestore collection.
+ * Deletes a document from a Mongo collection.
  */
 export async function dbDeleteItem(collectionName: string, docId: string): Promise<void> {
   try {
-    const docRef = doc(db, collectionName, docId);
-    await deleteDoc(docRef);
+    await request<void>(`${collectionUrl(collectionName)}/${encodeURIComponent(docId)}`, {
+      method: 'DELETE',
+    });
   } catch (error) {
-    console.error(`Error deleting item ${docId} from ${collectionName}:`, error);
+    console.error(`Mongo DB: Failed to delete item ${docId} from ${collectionName}:`, error);
     throw error;
   }
 }
 
 /**
- * Generic function to bulk-save a collection of items (useful for seeding).
+ * Bulk saves a collection of items into MongoDB.
  */
 export async function dbSaveCollection<T extends { id?: string; email?: string }>(
-  collectionName: string, 
-  items: T[]
+  collectionName: string,
+  items: T[],
 ): Promise<void> {
   try {
-    const batch = writeBatch(db);
-    items.forEach((item) => {
-      const docId = item.id || item.email;
-      if (!docId) return;
-      const docRef = doc(db, collectionName, docId);
-      batch.set(docRef, item, { merge: true });
+    await request<void>(`${collectionUrl(collectionName)}/bulk`, {
+      method: 'POST',
+      body: JSON.stringify({ items }),
     });
-    await batch.commit();
   } catch (error) {
-    console.error(`Error saving collection ${collectionName}:`, error);
+    console.error(`Mongo DB: Failed to bulk-save collection ${collectionName}:`, error);
     throw error;
   }
 }

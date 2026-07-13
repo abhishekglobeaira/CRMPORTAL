@@ -38,6 +38,7 @@ import {
   dbSaveItem, 
   dbDeleteItem, 
   dbSaveCollection,
+  listMongoCollections,
   signInWithGoogle
 } from './firebase';
 
@@ -58,6 +59,8 @@ import LeavesView from './components/LeavesView';
 import EmployeePortal from './components/EmployeePortal';
 import Toast from './components/Toast';
 import FrontPage from './components/FrontPage';
+import AdminManageView from './components/AdminManageView';
+import CandidatePortal from './components/CandidatePortal';
 
 import { ShieldAlert, Mail, Lock, LogIn, Building, LayoutGrid, Chrome, Briefcase, User, Phone, KeyRound, Coins, CheckCircle2, Terminal, ArrowLeft, Copy } from 'lucide-react';
 
@@ -90,7 +93,7 @@ const initialLeaveRequests: LeaveRequest[] = [
 export default function App() {
   // 1. Session Auth State
   const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [userType, setUserType] = useState<'admin' | 'employee'>('admin');
+  const [userType, setUserType] = useState<'admin' | 'employee' | 'candidate'>('admin');
   const [loggedInEmployee, setLoggedInEmployee] = useState<Employee | null>(null);
   const [showLogin, setShowLogin] = useState(false);
   const [userEmail, setUserEmail] = useState('');
@@ -103,7 +106,7 @@ export default function App() {
   const [leaveRequests, setLeaveRequests] = useState<LeaveRequest[]>([]);
 
   // 1c. Login/Register Form States
-  const [loginRole, setLoginRole] = useState<'admin' | 'employee'>('admin');
+  const [loginRole, setLoginRole] = useState<'admin' | 'employee' | 'candidate'>('admin');
   const [isSignUp, setIsSignUp] = useState(false);
   const [regName, setRegName] = useState('');
   const [regEmail, setRegEmail] = useState('');
@@ -175,19 +178,23 @@ export default function App() {
     try {
       setIsLoading(true);
 
-      const collectionsToLoad = [
-        { key: 'crm_employees', defaultData: initialEmployees, setter: setEmployees },
-        { key: 'crm_candidates', defaultData: initialCandidates, setter: setCandidates },
-        { key: 'crm_tasks', defaultData: initialTasks, setter: setTasks },
-        { key: 'crm_interviews', defaultData: initialInterviews, setter: setInterviews },
-        { key: 'crm_clients', defaultData: initialClients, setter: setClients },
-        { key: 'crm_attendance', defaultData: initialAttendance, setter: setAttendance },
-        { key: 'crm_activities', defaultData: initialActivities, setter: setActivities },
-        { key: 'crm_invoices', defaultData: initialInvoices, setter: setInvoices },
-        { key: 'crm_issues', defaultData: initialIssues, setter: setIssues },
-        { key: 'crm_equipment', defaultData: initialEquipment, setter: setEquipment },
-        { key: 'crm_leaves', defaultData: initialLeaveRequests, setter: setLeaveRequests },
-        { key: 'crm_salary_slips', defaultData: [] as SalarySlip[], setter: setSalarySlips }
+      const collectionsToLoad: Array<{
+        key: string;
+        defaultData: any[];
+        setter: React.Dispatch<React.SetStateAction<any[]>>;
+      }> = [
+        { key: 'crm_employees', defaultData: initialEmployees, setter: setEmployees as unknown as React.Dispatch<React.SetStateAction<any[]>> },
+        { key: 'crm_candidates', defaultData: initialCandidates, setter: setCandidates as unknown as React.Dispatch<React.SetStateAction<any[]>> },
+        { key: 'crm_tasks', defaultData: initialTasks, setter: setTasks as unknown as React.Dispatch<React.SetStateAction<any[]>> },
+        { key: 'crm_interviews', defaultData: initialInterviews, setter: setInterviews as unknown as React.Dispatch<React.SetStateAction<any[]>> },
+        { key: 'crm_clients', defaultData: initialClients, setter: setClients as unknown as React.Dispatch<React.SetStateAction<any[]>> },
+        { key: 'crm_attendance', defaultData: initialAttendance, setter: setAttendance as unknown as React.Dispatch<React.SetStateAction<any[]>> },
+        { key: 'crm_activities', defaultData: initialActivities, setter: setActivities as unknown as React.Dispatch<React.SetStateAction<any[]>> },
+        { key: 'crm_invoices', defaultData: initialInvoices, setter: setInvoices as unknown as React.Dispatch<React.SetStateAction<any[]>> },
+        { key: 'crm_issues', defaultData: initialIssues, setter: setIssues as unknown as React.Dispatch<React.SetStateAction<any[]>> },
+        { key: 'crm_equipment', defaultData: initialEquipment, setter: setEquipment as unknown as React.Dispatch<React.SetStateAction<any[]>> },
+        { key: 'crm_leaves', defaultData: initialLeaveRequests, setter: setLeaveRequests as unknown as React.Dispatch<React.SetStateAction<any[]>> },
+        { key: 'crm_salary_slips', defaultData: [] as SalarySlip[], setter: setSalarySlips as unknown as React.Dispatch<React.SetStateAction<any[]>> }
       ];
 
       for (const col of collectionsToLoad) {
@@ -196,12 +203,9 @@ export default function App() {
           const data = await dbGetCollection<any>(scopedKey);
           if (data && data.length > 0) {
             col.setter(data);
-            localStorage.setItem(col.key, JSON.stringify(data));
           } else {
-            // Firestore is empty for this admin, seed it with defaultData!
             if (col.defaultData.length > 0) {
               await dbSaveCollection(scopedKey, col.defaultData as any[]);
-              // Keep employee mapping of seeded employee files
               if (col.key === 'crm_employees') {
                 for (const emp of col.defaultData as Employee[]) {
                   await dbSaveItem('crm_employee_mappings', emp.email.toLowerCase(), {
@@ -212,17 +216,10 @@ export default function App() {
               }
             }
             col.setter(col.defaultData);
-            localStorage.setItem(col.key, JSON.stringify(col.defaultData));
           }
         } catch (e) {
           console.error(`Failed to load/seed collection ${col.key}:`, e);
-          // Fallback to local storage
-          const stored = localStorage.getItem(col.key);
-          if (stored) {
-            col.setter(JSON.parse(stored));
-          } else {
-            col.setter(col.defaultData);
-          }
+          col.setter(col.defaultData);
         }
       }
 
@@ -252,14 +249,10 @@ export default function App() {
       timestamp: 'Just now'
     };
     setActivities(prev => [newLog, ...prev]);
-    
-    // Persist log to storage
-    const currentLogs = JSON.parse(localStorage.getItem('crm_activities') || '[]');
-    localStorage.setItem('crm_activities', JSON.stringify([newLog, ...currentLogs]));
-    
+
     const scopedActKey = getScopedCollectionName('crm_activities', currentAdminEmail);
     dbSaveItem(scopedActKey, newLog.id, newLog).catch(e => {
-      console.error('Failed to sync new log to Firestore:', e);
+      console.error('Failed to sync new log to MongoDB:', e);
     });
   };
 
@@ -271,7 +264,7 @@ export default function App() {
     if (session) {
       setIsAuthenticated(true);
       setUserEmail(session);
-      setUserType(role as 'admin' | 'employee');
+      setUserType(role as 'admin' | 'employee' | 'candidate');
     }
 
     const initTenant = async () => {
@@ -303,13 +296,13 @@ export default function App() {
   }, []);
 
   // 6. Login / Logout Handlers
-  const handleLogin = async (e: React.FormEvent, role: 'admin' | 'employee', isRegister: boolean, signupData?: any) => {
+  const handleLogin = async (e: React.FormEvent, role: 'admin' | 'employee' | 'candidate', isRegister: boolean, signupData?: any) => {
     e.preventDefault();
     setLoginError('');
 
-    if (role === 'admin') {
-      if (isRegister) {
-        // Admin Sign Up
+    if (isRegister) {
+      // Sign Up: Use the selected signup role (Admin or Employee)
+      if (role === 'admin') {
         const { name, email, password } = signupData;
         if (!name || !email || !password) {
           setLoginError('All fields are required.');
@@ -348,39 +341,6 @@ export default function App() {
         triggerToast(`Admin registration successful! Welcome ${name}`, 'success');
         logActivity('payroll', 'Admin Registered & Logged In', `Admin profile created for ${name}.`);
       } else {
-        // Admin Sign In
-        const trimmedEmail = loginEmail.trim().toLowerCase();
-        let registeredAdmins: any[] = [];
-        try {
-          registeredAdmins = await dbGetCollection<any>('crm_registered_admins');
-        } catch (e) {
-          console.error('Failed to fetch registered admins from database:', e);
-        }
-        const customAdmin = registeredAdmins.find((a: any) => a.email === trimmedEmail && a.password === loginPassword);
-        
-        if ((trimmedEmail === 'admin@crm.com' && loginPassword === '123456') || customAdmin) {
-          localStorage.setItem('crm_user_session', trimmedEmail);
-          localStorage.setItem('crm_user_role', 'admin');
-          localStorage.setItem('crm_associated_admin', trimmedEmail);
-          setIsAuthenticated(true);
-          setUserEmail(trimmedEmail);
-          setUserType('admin');
-          setCurrentAdminEmail(trimmedEmail);
-          await loadTenantData(trimmedEmail, trimmedEmail, 'admin');
-
-          triggerToast('Secure Administrator session authenticated!', 'success');
-          logActivity('payroll', 'Admin Logged In', 'Admin session successfully initiated.');
-          
-          setLoginEmail('');
-          setLoginPassword('');
-        } else {
-          setLoginError('Invalid security email or access key.');
-          triggerToast('Authentication failed. Check credentials.', 'error');
-        }
-      }
-    } else {
-      // Employee Portal
-      if (isRegister) {
         // Employee Sign Up
         const { name, email, phone, password, department, role: empRole, salary } = signupData;
         if (!name || !email || !phone || !password || !department || !empRole || !salary) {
@@ -434,68 +394,168 @@ export default function App() {
         
         triggerToast(`Welcome to the portal, ${name}!`, 'success');
         logActivity('employee', 'Employee Self-Registered', `${name} registered & logged in as ${empRole}.`);
-      } else {
-        // Employee Sign In - match email or phone
-        const inputKey = loginEmail.trim().toLowerCase();
-        if (!inputKey) {
-          setLoginError('Please enter your registered Email or Phone Number.');
-          return;
-        }
-        if (!loginPassword) {
-          setLoginError('Please enter your secure password.');
-          return;
-        }
+      }
+    } else {
+      // Simple Unified Sign In - Auto Detect Role dynamically!
+      const trimmedEmail = loginEmail.trim().toLowerCase();
+      if (!trimmedEmail) {
+        setLoginError('Please enter your email or phone number.');
+        return;
+      }
+      if (!loginPassword) {
+        setLoginError('Please enter your password.');
+        return;
+      }
+
+      // 1. Check Admin matches
+      let isAdmin = false;
+      let registeredAdmins: any[] = [];
+      try {
+        registeredAdmins = await dbGetCollection<any>('crm_registered_admins');
+      } catch (e) {
+        console.error('Failed to fetch registered admins from database:', e);
+      }
+      const customAdmin = registeredAdmins.find((a: any) => a.email === trimmedEmail && a.password === loginPassword);
+
+      if ((trimmedEmail === 'admin@crm.com' && loginPassword === '123456') || customAdmin) {
+        localStorage.setItem('crm_user_session', trimmedEmail);
+        localStorage.setItem('crm_user_role', 'admin');
+        localStorage.setItem('crm_associated_admin', trimmedEmail);
+        setIsAuthenticated(true);
+        setUserEmail(trimmedEmail);
+        setUserType('admin');
+        setCurrentAdminEmail(trimmedEmail);
+        await loadTenantData(trimmedEmail, trimmedEmail, 'admin');
+
+        triggerToast('Secure Administrator session authenticated!', 'success');
+        logActivity('payroll', 'Admin Logged In', 'Admin session successfully initiated.');
         
-        let targetAdminEmail = 'admin@crm.com';
-        try {
-          const mappings = await dbGetCollection<any>('crm_employee_mappings');
-          const foundMap = mappings.find((m: any) => m.employeeEmail.toLowerCase() === inputKey);
-          if (foundMap) {
-            targetAdminEmail = foundMap.adminEmail;
-          }
-        } catch (e) {
-          console.error('Failed lookup for employee mapping on sign-in:', e);
+        setLoginEmail('');
+        setLoginPassword('');
+        return;
+      }
+
+      // 2. Check Candidate matches
+      try {
+        const candidateAccounts = await dbGetCollection<any>('crm_candidate_accounts');
+        const foundCandidate = candidateAccounts.find((acc: any) => acc.email.toLowerCase() === trimmedEmail && acc.password === loginPassword);
+
+        if (foundCandidate) {
+          localStorage.setItem('crm_user_session', trimmedEmail);
+          localStorage.setItem('crm_user_role', 'candidate');
+          
+          setIsAuthenticated(true);
+          setUserEmail(trimmedEmail);
+          setUserType('candidate');
+          
+          triggerToast(`Welcome to your recruitment workspace, ${foundCandidate.candidateName}!`, 'success');
+          
+          setLoginEmail('');
+          setLoginPassword('');
+          return;
+        }
+      } catch (err) {
+        console.error('Candidate login check failed:', err);
+      }
+
+      // 3. Check Employee matches
+      let targetAdminEmail = 'admin@crm.com';
+      try {
+        const mappings = await dbGetCollection<any>('crm_employee_mappings');
+        const foundMap = mappings.find((m: any) => m.employeeEmail.toLowerCase() === trimmedEmail);
+        if (foundMap) {
+          targetAdminEmail = foundMap.adminEmail;
+        }
+      } catch (e) {
+        console.error('Failed lookup for employee mapping on sign-in:', e);
+      }
+
+      const scopedEmpKey = getScopedCollectionName('crm_employees', targetAdminEmail);
+      const employeesList = await dbGetCollection<Employee>(scopedEmpKey);
+
+      const foundEmployee = employeesList.find(emp => 
+        emp.email.toLowerCase() === trimmedEmail || 
+        (emp.phone && emp.phone.replace(/[^0-9+]/g, '') === trimmedEmail.replace(/[^0-9+]/g, ''))
+      );
+
+      if (foundEmployee) {
+        if (foundEmployee.password && foundEmployee.password !== loginPassword) {
+          setLoginError('Incorrect password. Please verify and try again.');
+          triggerToast('Authentication failed. Incorrect password.', 'error');
+          return;
         }
 
-        const scopedEmpKey = getScopedCollectionName('crm_employees', targetAdminEmail);
-        const employeesList = await dbGetCollection<Employee>(scopedEmpKey);
+        localStorage.setItem('crm_user_session', foundEmployee.email);
+        localStorage.setItem('crm_user_role', 'employee');
+        localStorage.setItem('crm_logged_in_employee_id', foundEmployee.id);
+        localStorage.setItem('crm_associated_admin', targetAdminEmail);
+        
+        setIsAuthenticated(true);
+        setUserEmail(foundEmployee.email);
+        setUserType('employee');
+        setCurrentAdminEmail(targetAdminEmail);
+        setLoggedInEmployee(foundEmployee);
 
-        const found = employeesList.find(emp => 
-          emp.email.toLowerCase() === inputKey || 
-          (emp.phone && emp.phone.replace(/[^0-9+]/g, '') === inputKey.replace(/[^0-9+]/g, ''))
-        );
+        await loadTenantData(targetAdminEmail, foundEmployee.email, 'employee');
+        
+        triggerToast(`Welcome back, ${foundEmployee.name}!`, 'success');
+        logActivity('employee', 'Employee Logged In', `${foundEmployee.name} initiated self-service session.`);
+        
+        setLoginEmail('');
+        setLoginPassword('');
+        return;
+      }
 
-        if (found) {
-          // Check password if exists
-          if (found.password && found.password !== loginPassword) {
+      // 4. Fallback search across MongoDB employee collections in case mapping is missing
+      try {
+        let foundEmployeeAnywhere: Employee | null = null;
+        let matchedAdminEmailAnywhere = 'admin@crm.com';
+
+        const collectionNames = await listMongoCollections();
+        const employeeCollections = collectionNames.filter(name => name === 'crm_employees' || name.startsWith('crm_employees_'));
+
+        for (const collectionName of employeeCollections) {
+          const list = await dbGetCollection<Employee>(collectionName);
+          const found = list.find(emp => emp.email.toLowerCase() === trimmedEmail || (emp.phone && emp.phone.replace(/[^0-9+]/g, '') === trimmedEmail.replace(/[^0-9+]/g, '')));
+
+          if (found) {
+            foundEmployeeAnywhere = found;
+            if (collectionName !== 'crm_employees') {
+              matchedAdminEmailAnywhere = collectionName.replace('crm_employees_', '').replace(/_/g, '@');
+            }
+            break;
+          }
+        }
+
+        if (foundEmployeeAnywhere) {
+          if (foundEmployeeAnywhere.password && foundEmployeeAnywhere.password !== loginPassword) {
             setLoginError('Incorrect password. Please verify and try again.');
             triggerToast('Authentication failed. Incorrect password.', 'error');
             return;
           }
 
-          localStorage.setItem('crm_user_session', found.email);
+          localStorage.setItem('crm_user_session', foundEmployeeAnywhere.email);
           localStorage.setItem('crm_user_role', 'employee');
-          localStorage.setItem('crm_logged_in_employee_id', found.id);
-          localStorage.setItem('crm_associated_admin', targetAdminEmail);
+          localStorage.setItem('crm_logged_in_employee_id', foundEmployeeAnywhere.id);
+          localStorage.setItem('crm_associated_admin', matchedAdminEmailAnywhere);
           
           setIsAuthenticated(true);
-          setUserEmail(found.email);
+          setUserEmail(foundEmployeeAnywhere.email);
           setUserType('employee');
-          setCurrentAdminEmail(targetAdminEmail);
-          setLoggedInEmployee(found);
+          setCurrentAdminEmail(matchedAdminEmailAnywhere);
+          setLoggedInEmployee(foundEmployeeAnywhere);
 
-          await loadTenantData(targetAdminEmail, found.email, 'employee');
+          await loadTenantData(matchedAdminEmailAnywhere, foundEmployeeAnywhere.email, 'employee');
           
-          triggerToast(`Welcome back, ${found.name}!`, 'success');
-          logActivity('employee', 'Employee Logged In', `${found.name} initiated self-service session.`);
-          
-          setLoginEmail('');
-          setLoginPassword('');
-        } else {
-          setLoginError('No registered employee found matching this email or phone number.');
-          triggerToast('Authentication failed. Employee not found.', 'error');
+          triggerToast(`Welcome back, ${foundEmployeeAnywhere.name}!`, 'success');
+          return;
         }
+      } catch (err) {
+        console.error('Backup scan failed:', err);
       }
+
+      setLoginError('No registered Admin, Employee, or Candidate profile matches these credentials.');
+      triggerToast('Authentication failed. Check credentials.', 'error');
     }
   };
 
@@ -529,7 +589,29 @@ export default function App() {
       return res;
     };
 
-    if (loginRole === 'admin') {
+    // Auto-detect role for forgot password
+    let resetRole: 'admin' | 'employee' = 'admin';
+    let matchedAdmin = false;
+    try {
+      if (trimmedEmail === 'admin@crm.com') {
+        matchedAdmin = true;
+      } else {
+        const registeredAdmins = await dbGetCollection<any>('crm_registered_admins');
+        if (registeredAdmins.some((a: any) => a.email === trimmedEmail)) {
+          matchedAdmin = true;
+        }
+      }
+    } catch (err) {
+      console.error('Password reset admin check error:', err);
+    }
+
+    if (matchedAdmin) {
+      resetRole = 'admin';
+    } else {
+      resetRole = 'employee';
+    }
+
+    if (resetRole === 'admin') {
       let registeredAdmins: any[] = [];
       try {
         registeredAdmins = await dbGetCollection<any>('crm_registered_admins');
@@ -585,8 +667,8 @@ export default function App() {
 
     if (!isSuccess) {
       setResetStatus('error');
-      setLoginError(`No registered ${loginRole} found matching email: ${trimmedEmail}`);
-      triggerToast(`Account lookup failed. Verify email and selected role.`, 'error');
+      setLoginError(`No registered profile found matching email: ${trimmedEmail}`);
+      triggerToast(`Account lookup failed. Verify email.`, 'error');
       return;
     }
 
@@ -643,26 +725,21 @@ export default function App() {
       const googleEmail = user.email.trim().toLowerCase();
       const displayName = user.displayName || googleEmail.split('@')[0];
 
-      if (loginRole === 'admin') {
-        // Sign in as Admin
-        let registeredAdmins: any[] = [];
-        try {
-          registeredAdmins = await dbGetCollection<any>('crm_registered_admins');
-        } catch (e) {
-          console.error('Failed to fetch registered admins from database:', e);
-        }
+      // Auto-Detect Role for Google Sign In
+      let isAdmin = false;
+      let registeredAdmins: any[] = [];
+      try {
+        registeredAdmins = await dbGetCollection<any>('crm_registered_admins');
+      } catch (e) {
+        console.error('Failed to fetch registered admins from database:', e);
+      }
 
-        let customAdmin = registeredAdmins.find((a: any) => a.email === googleEmail);
-        
-        if (!customAdmin && googleEmail !== 'admin@crm.com') {
-          customAdmin = { name: displayName, email: googleEmail, password: 'GoogleAuth' };
-          try {
-            await dbSaveItem('crm_registered_admins', googleEmail, customAdmin);
-          } catch (e) {
-            console.error('Failed to save new admin during Google Sign In:', e);
-          }
-        }
+      let customAdmin = registeredAdmins.find((a: any) => a.email === googleEmail);
+      if (googleEmail === 'admin@crm.com' || customAdmin) {
+        isAdmin = true;
+      }
 
+      if (isAdmin) {
         localStorage.setItem('crm_user_session', googleEmail);
         localStorage.setItem('crm_user_role', 'admin');
         localStorage.setItem('crm_associated_admin', googleEmail);
@@ -674,87 +751,101 @@ export default function App() {
 
         triggerToast(`Admin Google session authenticated! Welcome ${displayName}`, 'success');
         logActivity('payroll', 'Admin Google Logged In', `Admin logged in with Google: ${displayName}.`);
-      } else {
-        // Sign in as Employee
-        let targetAdminEmail = 'admin@crm.com';
-        try {
-          const mappings = await dbGetCollection<any>('crm_employee_mappings');
-          const foundMap = mappings.find((m: any) => m.employeeEmail.toLowerCase() === googleEmail);
-          if (foundMap) {
-            targetAdminEmail = foundMap.adminEmail;
-          }
-        } catch (e) {
-          console.error('Failed lookup for employee mapping in Google sign-in:', e);
-        }
+        return;
+      }
 
-        const scopedEmpKey = getScopedCollectionName('crm_employees', targetAdminEmail);
-        const employeesList = await dbGetCollection<Employee>(scopedEmpKey);
-        const found = employeesList.find(emp => emp.email.toLowerCase() === googleEmail);
-
-        if (found) {
-          localStorage.setItem('crm_user_session', found.email);
-          localStorage.setItem('crm_user_role', 'employee');
-          localStorage.setItem('crm_logged_in_employee_id', found.id);
-          localStorage.setItem('crm_associated_admin', targetAdminEmail);
-          
-          setIsAuthenticated(true);
-          setUserEmail(found.email);
-          setUserType('employee');
-          setCurrentAdminEmail(targetAdminEmail);
-          setLoggedInEmployee(found);
-
-          await loadTenantData(targetAdminEmail, found.email, 'employee');
-          
-          triggerToast(`Welcome back, ${found.name}!`, 'success');
-          logActivity('employee', 'Employee Google Logged In', `${found.name} initiated Google self-service session.`);
-        } else {
-          // Automatic Employee registration if not found
-          const employeeId = `emp-${Date.now()}`;
-          const newEmployee: Employee = {
-            id: employeeId,
-            name: displayName,
-            email: googleEmail,
-            phone: '+1-555-0199',
-            department: 'Engineering',
-            role: 'Software Engineer',
-            salary: 60000,
-            status: 'Active',
-            joiningDate: new Date().toISOString().split('T')[0]
-          };
-
-          try {
-            await dbSaveItem('crm_employee_mappings', googleEmail, {
-              employeeEmail: googleEmail,
-              adminEmail: targetAdminEmail
-            });
-          } catch (e) {
-            console.error('Failed to save mapping for Google registered employee:', e);
-          }
-
-          const updated = [...employeesList, newEmployee];
-          setCurrentAdminEmail(targetAdminEmail);
-          try {
-            await dbSaveCollection(scopedEmpKey, updated);
-          } catch (e) {
-            console.error('Failed to save new Google employee to scoped collection:', e);
-          }
-          
+      // Check Candidate
+      try {
+        const candidateAccounts = await dbGetCollection<any>('crm_candidate_accounts');
+        const foundCandidate = candidateAccounts.find((acc: any) => acc.email.toLowerCase() === googleEmail);
+        if (foundCandidate) {
           localStorage.setItem('crm_user_session', googleEmail);
-          localStorage.setItem('crm_user_role', 'employee');
-          localStorage.setItem('crm_logged_in_employee_id', employeeId);
-          localStorage.setItem('crm_associated_admin', targetAdminEmail);
+          localStorage.setItem('crm_user_role', 'candidate');
           
           setIsAuthenticated(true);
           setUserEmail(googleEmail);
-          setUserType('employee');
-          setLoggedInEmployee(newEmployee);
-
-          await loadTenantData(targetAdminEmail, googleEmail, 'employee');
+          setUserType('candidate');
           
-          triggerToast(`Welcome to the portal, ${displayName}!`, 'success');
-          logActivity('employee', 'Employee Self-Registered via Google', `${displayName} registered with Google as Software Engineer.`);
+          triggerToast(`Welcome back to your workspace, ${foundCandidate.candidateName}!`, 'success');
+          return;
         }
+      } catch (err) {
+        console.error('Candidate Google auth check failed:', err);
       }
+
+      // Check Employee
+      let targetAdminEmail = 'admin@crm.com';
+      let foundEmployeeMapping = false;
+      try {
+        const mappings = await dbGetCollection<any>('crm_employee_mappings');
+        const foundMap = mappings.find((m: any) => m.employeeEmail.toLowerCase() === googleEmail);
+        if (foundMap) {
+          targetAdminEmail = foundMap.adminEmail;
+          foundEmployeeMapping = true;
+        }
+      } catch (e) {
+        console.error('Failed lookup for employee mapping in Google sign-in:', e);
+      }
+
+      const scopedEmpKey = getScopedCollectionName('crm_employees', targetAdminEmail);
+      const employeesList = await dbGetCollection<Employee>(scopedEmpKey);
+      const foundEmployee = employeesList.find(emp => emp.email.toLowerCase() === googleEmail);
+
+      if (foundEmployee || foundEmployeeMapping) {
+        const employeeRecord = foundEmployee || {
+          id: `emp-${Date.now()}`,
+          name: displayName,
+          email: googleEmail,
+          phone: '+1-555-0199',
+          department: 'Engineering',
+          role: 'Software Engineer',
+          salary: 60000,
+          status: 'Active',
+          joiningDate: new Date().toISOString().split('T')[0]
+        } as Employee;
+
+        if (!foundEmployee) {
+          const updated = [...employeesList, employeeRecord];
+          await dbSaveCollection(scopedEmpKey, updated);
+        }
+
+        localStorage.setItem('crm_user_session', employeeRecord.email);
+        localStorage.setItem('crm_user_role', 'employee');
+        localStorage.setItem('crm_logged_in_employee_id', employeeRecord.id);
+        localStorage.setItem('crm_associated_admin', targetAdminEmail);
+        
+        setIsAuthenticated(true);
+        setUserEmail(employeeRecord.email);
+        setUserType('employee');
+        setCurrentAdminEmail(targetAdminEmail);
+        setLoggedInEmployee(employeeRecord);
+
+        await loadTenantData(targetAdminEmail, employeeRecord.email, 'employee');
+        
+        triggerToast(`Welcome back, ${employeeRecord.name}!`, 'success');
+        logActivity('employee', 'Employee Google Logged In', `${employeeRecord.name} initiated Google self-service session.`);
+        return;
+      }
+
+      // Default fallback: Create a new corporate Admin workspace
+      const newAdmin = { name: displayName, email: googleEmail, password: 'GoogleAuth' };
+      try {
+        await dbSaveItem('crm_registered_admins', googleEmail, newAdmin);
+      } catch (e) {
+        console.error('Failed to save default admin profile:', e);
+      }
+
+      localStorage.setItem('crm_user_session', googleEmail);
+      localStorage.setItem('crm_user_role', 'admin');
+      localStorage.setItem('crm_associated_admin', googleEmail);
+      setIsAuthenticated(true);
+      setUserEmail(googleEmail);
+      setUserType('admin');
+      setCurrentAdminEmail(googleEmail);
+      await loadTenantData(googleEmail, googleEmail, 'admin');
+
+      triggerToast(`Created a new corporate Admin workspace! Welcome, ${displayName}`, 'success');
+      logActivity('payroll', 'Admin Registered via Google', `Admin registered with Google: ${displayName}.`);
     } catch (error: any) {
       console.error('Google sign in error:', error);
       if (error && error.code !== 'auth/popup-closed-by-user') {
@@ -825,8 +916,8 @@ export default function App() {
 
   // 8. CRUD Callback Handlers & Storage Sync
   const syncAndSave = async <T extends { id?: string; email?: string }>(
-    key: string, 
-    updatedList: T[], 
+    key: string,
+    updatedList: T[],
     setter: React.Dispatch<React.SetStateAction<T[]>>
   ) => {
     let previousList: T[] = [];
@@ -834,17 +925,14 @@ export default function App() {
       previousList = prev;
       return updatedList;
     });
-    localStorage.setItem(key, JSON.stringify(updatedList));
 
     try {
       const scopedKey = getScopedCollectionName(key, currentAdminEmail);
-      // Find deleted items by comparing previous state with updated list
       const removedItems = previousList.filter(prevItem => {
         const idField = prevItem.id || prevItem.email;
         return !updatedList.some(currItem => (currItem.id || currItem.email) === idField);
       });
 
-      // Delete removed documents
       for (const item of removedItems) {
         const idField = item.id || item.email;
         if (idField) {
@@ -852,10 +940,9 @@ export default function App() {
         }
       }
 
-      // Save/merge remaining documents
       await dbSaveCollection(scopedKey, updatedList);
     } catch (e) {
-      console.error(`Failed to sync changes for ${key} to Firestore:`, e);
+      console.error(`Failed to sync changes for ${key} to MongoDB:`, e);
     }
   };
 
@@ -1266,6 +1353,18 @@ export default function App() {
             onRejectLeave={handleRejectLeave}
           />
         );
+      case 'admin-manage':
+        return (
+          <AdminManageView 
+            candidates={candidates}
+            employees={employees}
+            onAddEmployee={handleAddEmployee}
+            onEditEmployee={handleEditEmployee}
+            currentAdminEmail={currentAdminEmail}
+            onTriggerToast={triggerToast}
+            onLogActivity={logActivity}
+          />
+        );
       default:
         return <div className="text-slate-100 font-bold">Workspace Loading...</div>;
     }
@@ -1294,7 +1393,7 @@ export default function App() {
         <FrontPage 
           employeeCount={employees.length}
           candidateCount={candidates.length}
-          taskCount={tasks.filter(t => t.status !== 'done').length}
+          taskCount={tasks.filter(t => t.status !== 'Completed').length}
           clientCount={clients.length}
           onLaunchPortal={() => setShowLogin(true)}
         />
@@ -1327,40 +1426,6 @@ export default function App() {
               </p>
             </div>
 
-            {/* Portal Role Toggles */}
-            <div className="grid grid-cols-2 gap-2 bg-slate-950/60 p-1.5 rounded-2xl border border-white/5 mb-6">
-              <button
-                type="button"
-                id="btn-role-admin"
-                onClick={() => {
-                  setLoginRole('admin');
-                  setLoginError('');
-                }}
-                className={`py-2.5 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
-                  loginRole === 'admin'
-                    ? 'bg-sky-500 text-slate-950 shadow-md'
-                    : 'text-slate-400 hover:text-slate-200'
-                }`}
-              >
-                <span>Administrator Access</span>
-              </button>
-              <button
-                type="button"
-                id="btn-role-employee"
-                onClick={() => {
-                  setLoginRole('employee');
-                  setLoginError('');
-                }}
-                className={`py-2.5 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
-                  loginRole === 'employee'
-                    ? 'bg-indigo-500 text-white shadow-md'
-                    : 'text-slate-400 hover:text-slate-200'
-                }`}
-              >
-                <span>Employee Workspace</span>
-              </button>
-            </div>
-
             {/* Error Prompt */}
             {loginError && (
               <div 
@@ -1381,7 +1446,7 @@ export default function App() {
                     <span>Credentials Recovery Protocol</span>
                   </h3>
                   <p className="text-xs text-slate-400 leading-relaxed">
-                    Enter your verified corporate email address below. The security node will verify registration records, generate a secure access credential, update the database repository, and initiate a secured SMTP mail transmission sequence.
+                    Enter your registered workspace email address below. The security system will verify our records and simulate generating a secure access key sent to your inbox.
                   </p>
                 </div>
 
@@ -1465,7 +1530,7 @@ export default function App() {
                   <form onSubmit={handleForgotPasswordSubmit} className="space-y-4">
                     <div className="space-y-1.5">
                       <label className="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest block">
-                        Registered Corporate Email
+                        Registered Workspace Email
                       </label>
                       <div className="relative">
                         <Mail className="absolute left-3.5 top-3 h-4 w-4 text-slate-500" />
@@ -1509,33 +1574,18 @@ export default function App() {
               <div className="space-y-4">
                 <div className="bg-slate-950/40 border border-white/5 rounded-2xl p-5 mb-6 text-slate-300 space-y-3.5">
                   <h3 className="text-xs font-bold tracking-wider text-slate-200 uppercase flex items-center gap-2">
-                    {loginRole === 'admin' ? (
-                      <>
-                        <Building className="h-4 w-4 text-sky-400" />
-                        <span>Admin Command Center</span>
-                      </>
-                    ) : (
-                      <>
-                        <Briefcase className="h-4 w-4 text-indigo-400" />
-                        <span>Employee Self-Service</span>
-                      </>
-                    )}
+                    <Building className="h-4 w-4 text-sky-400" />
+                    <span>Unified CRM & HRM Gateway</span>
                   </h3>
                   
                   <p className="text-xs text-slate-400 leading-relaxed">
-                    {loginRole === 'admin' 
-                      ? "Authorize via Google to manage the organizational framework. You'll gain master access to employee records, live candidate pipeline tracking, automatic leaves dispatch, payroll generation, and financial ledger bookkeeping."
-                      : "Sign in using your Google account to access your employee portal. Check-in daily for smart attendance, review detailed salary slips, check your monthly tasks ledger, submit leave requests, and communicate directly with HR."
-                    }
+                    Sign in to your account. The security system automatically identifies whether you are an Administrator, Employee, or Candidate and logs you into the correct dashboard scope.
                   </p>
 
                   <div className="pt-2.5 border-t border-white/5 flex items-start gap-2 text-[10px] text-slate-500 font-mono">
                     <span className="text-sky-400 font-black shrink-0">❖</span>
                     <span>
-                      {loginRole === 'admin'
-                        ? "First-time sign-ins will automatically spawn an isolated, high-integrity company tenant on the cloud."
-                        : "Make sure to authenticate using the email address registered by your company's Administrator."
-                      }
+                      First-time Administrator sign-ups automatically generate an isolated corporate workspace on the cloud.
                     </span>
                   </div>
                 </div>
@@ -1584,6 +1634,7 @@ export default function App() {
                     onClick={() => {
                       setIsSignUp(true);
                       setLoginError('');
+                      setLoginRole('admin'); // default registration as admin
                     }}
                     className={`text-[11px] font-black uppercase tracking-wider pb-1 px-2.5 transition-all border-b-2 cursor-pointer ${
                       isSignUp
@@ -1611,6 +1662,35 @@ export default function App() {
                   {isSignUp ? (
                     // Sign Up Fields
                     <div className="space-y-4">
+                      {/* Register type choice inside Sign Up */}
+                      <div className="space-y-1.5 mb-2">
+                        <label className="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest block">Register Profile Type</label>
+                        <div className="grid grid-cols-2 gap-1.5 bg-slate-950/60 p-1 rounded-2xl border border-white/5">
+                          <button
+                            type="button"
+                            onClick={() => setLoginRole('admin')}
+                            className={`py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                              loginRole === 'admin'
+                                ? 'bg-sky-500 text-slate-950 font-black shadow-md'
+                                : 'text-slate-400 hover:text-slate-200'
+                            }`}
+                          >
+                            Administrator
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setLoginRole('employee')}
+                            className={`py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                              loginRole === 'employee'
+                                ? 'bg-indigo-500 text-white font-black shadow-md'
+                                : 'text-slate-400 hover:text-slate-200'
+                            }`}
+                          >
+                            Employee
+                          </button>
+                        </div>
+                      </div>
+
                       <div className="space-y-1.5">
                         <label className="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest block">Full Legal Name</label>
                         <div className="relative">
@@ -1723,11 +1803,11 @@ export default function App() {
                       </div>
                     </div>
                   ) : (
-                    // Sign In Fields
+                    // Sign In Fields - Totally Unified!
                     <div className="space-y-4">
                       <div className="space-y-1.5">
                         <label className="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest block">
-                          {loginRole === 'admin' ? 'Access Email Address' : 'Employee Email or Phone Number'}
+                          Email Address or Phone Number
                         </label>
                         <div className="relative">
                           <Mail className="absolute left-3.5 top-3 h-4 w-4 text-slate-500" />
@@ -1735,7 +1815,7 @@ export default function App() {
                             id="login-email"
                             type="text"
                             required
-                            placeholder={loginRole === 'admin' ? "admin@crm.com" : "elena@crm.com or Phone..."}
+                            placeholder="e.g. admin@crm.com, elena@crm.com, or Phone Number"
                             value={loginEmail}
                             onChange={(e) => setLoginEmail(e.target.value)}
                             className="w-full bg-slate-950/60 border border-white/10 focus:border-sky-400 rounded-xl py-2.5 pl-11 pr-4 text-xs text-slate-200 placeholder-slate-600 focus:outline-none transition-all"
@@ -1816,6 +1896,16 @@ export default function App() {
         onLogout={handleLogout}
         onAddAttendanceRecord={handleAddAttendanceRecord}
         onApplyLeave={handleApplyLeave}
+      />
+    );
+  }
+
+  if (userType === 'candidate') {
+    return (
+      <CandidatePortal 
+        candidateEmail={userEmail}
+        onLogout={handleLogout}
+        triggerToast={triggerToast}
       />
     );
   }
