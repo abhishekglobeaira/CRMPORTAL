@@ -258,14 +258,10 @@ export default function App() {
 
   // 5. Initial Seed & Session Load
   useEffect(() => {
-    // Session check
+    // Start from the public landing experience on first open.
+    // Persisted session data is used only after the user explicitly launches the portal.
     const session = localStorage.getItem('crm_user_session');
     const role = localStorage.getItem('crm_user_role') || 'admin';
-    if (session) {
-      setIsAuthenticated(true);
-      setUserEmail(session);
-      setUserType(role as 'admin' | 'employee' | 'candidate');
-    }
 
     const initTenant = async () => {
       let resolvedAdminEmail = 'admin@crm.com';
@@ -288,8 +284,9 @@ export default function App() {
           }
         }
       }
+
       setCurrentAdminEmail(resolvedAdminEmail);
-      await loadTenantData(resolvedAdminEmail, session || undefined, role);
+      await loadTenantData(resolvedAdminEmail, undefined, undefined);
     };
 
     initTenant();
